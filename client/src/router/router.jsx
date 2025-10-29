@@ -4,6 +4,7 @@ import Home from "../pages/Home";
 import Login from "../pages/Login";
 import VendorRegister from "../pages/VendorRegister";
 import CustomerRegister from "../pages/CustomerRegister";
+import VendorsList from "../pages/VendorList";
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -21,7 +22,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: "vendor/register", element: <VendorRegister /> },
-      { path: "customer/register", element: <CustomerRegister/>}
+      { path: "customer/register", element: <CustomerRegister/>},
+      { path: "customer/allVendors", element: <VendorsList/>}
     ],
   },
   {

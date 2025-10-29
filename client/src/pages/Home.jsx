@@ -22,7 +22,7 @@ export default function Home() {
             Join as Vendor
           </button>
           <button
-            onClick={() => navigate("/customer/register")}
+            onClick={() => navigate("/customer/allVendors")}
             className="px-6 py-3 rounded-full border border-gray-300 bg-white text-gray-700 font-medium hover:border-indigo-500 hover:text-indigo-600 transition-transform transform hover:scale-105 shadow-sm"
           >
             Explore as Customer
