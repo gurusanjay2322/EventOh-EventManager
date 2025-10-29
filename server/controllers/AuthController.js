@@ -287,8 +287,13 @@ export const login = async (req, res) => {
 
     const user = await User.findOne({ email: email.toLowerCase().trim() });
     if (!user) return res.status(404).json({ message: "User not found" });
+    console.log("🧠 Login attempt:", email);
+    console.log("📦 Found user:", user);
 
     const validPassword = await bcrypt.compare(password, user.password);
+    console.log("🔐 Comparing:", password, "vs", user.password);
+    console.log("✅ Match result:", validPassword);
+
     if (!validPassword)
       return res.status(401).json({ message: "Invalid credentials" });
 

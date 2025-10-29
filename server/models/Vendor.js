@@ -13,7 +13,10 @@ const VenueUnitSchema = new Schema({
   pricePerHour: { type: Number, default: 0 },        // optional hourly price
   minBookingHours: { type: Number, default: 0 },
   amenities: [String],                               // ["AC Hall", "Parking"]
-  images: [String],                                  // urls
+  images: [String],
+   verified: { type: Boolean, default: false }, // ✅ Added
+  verifiedAt: { type: Date },
+  verifiedBy: { type: Schema.Types.ObjectId, ref: "User" },                                  // urls
   isActive: { type: Boolean, default: true },
 });
 

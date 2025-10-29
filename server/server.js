@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth.js";
 import { swaggerUi, swaggerSpec } from "./config/Swagger.js";
 import vendorRoutes from './routes/Vendor.js'
 import customerRoutes from './routes/Customer.js';
+import adminRoutes from './routes/adminRoutes.js';
 import bookingRoutes from "./routes/Booking.js";
 dotenv.config();
 const app = express();
@@ -22,6 +23,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/vendors", vendorRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/bookings", bookingRoutes);
+app.use("/api/admin",adminRoutes);
 
 app.get("/", (req, res) => {
   res.send("Event-Oh API running!");
