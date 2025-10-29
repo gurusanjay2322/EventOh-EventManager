@@ -1,11 +1,9 @@
 import { createBrowserRouter } from "react-router-dom";
 import Layout from "../layout/Layout";
 import Home from "../pages/Home";
-import RegisterFreelancer from "../pages/RegisterFreelancer";
-import RegisterEventTeam from "../pages/RegisterEventTeam";
-import RegisterVenue from "../pages/RegisterVenue";
 import Login from "../pages/Login";
 import VendorRegister from "../pages/VendorRegister";
+import CustomerRegister from "../pages/CustomerRegister";
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("token");
@@ -22,9 +20,8 @@ const router = createBrowserRouter([
     element: <Layout />,
     children: [
       { index: true, element: <Home /> },
-      { path: "event-team", element: <RegisterEventTeam /> },
-      { path: "venue", element: <RegisterVenue /> },
-      { path: "register", element: <VendorRegister /> },
+      { path: "vendor/register", element: <VendorRegister /> },
+      { path: "customer/register", element: <CustomerRegister/>}
     ],
   },
   {

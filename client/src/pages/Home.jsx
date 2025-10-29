@@ -22,7 +22,7 @@ export default function Home() {
             Join as Vendor
           </button>
           <button
-            onClick={() => navigate("/login")}
+            onClick={() => navigate("/customer/register")}
             className="px-6 py-3 rounded-full border border-gray-300 bg-white text-gray-700 font-medium hover:border-indigo-500 hover:text-indigo-600 transition-transform transform hover:scale-105 shadow-sm"
           >
             Explore as Customer
@@ -58,7 +58,7 @@ export default function Home() {
           Whether you’re planning a wedding, a corporate party, or a festival — Event-Oh has you covered.
         </p>
         <button
-          onClick={() => navigate("/register")}
+          onClick={() => navigate("/vendor/register")}
           className="px-8 py-3 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold hover:opacity-90 transition-all duration-300 transform hover:scale-105 shadow-lg"
         >
           Get Started
