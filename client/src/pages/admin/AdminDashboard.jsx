@@ -1,7 +1,22 @@
+import { useState, useEffect } from "react";
 import useAxios from "../../hooks/useAxios";
 
 export default function AdminDashboard() {
-  const { data, loading, error } = useAxios({ url: "/admin/vendors" });
+  const { sendRequest, loading, error } = useAxios();
+  const [vendors, setVendors] = useState([]);
+
+  // 🧩 Fetch all vendors (GET /api/admin/vendors)
+  useEffect(() => {
+    const fetchVendors = async () => {
+      try {
+        const res = await sendRequest("/admin/vendors", "GET");
+        setVendors(res?.vendors || []);
+      } catch (err) {
+        console.error("❌ Failed to fetch vendors:", err);
+      }
+    };
+    fetchVendors();
+  }, [sendRequest]);
 
   if (loading)
     return (
@@ -17,12 +32,10 @@ export default function AdminDashboard() {
       </div>
     );
 
-  const vendors = data?.vendors || [];
-
   // 🧮 Stats Calculations
   const pendingVerifications = vendors.reduce((count, vendor) => {
     if (vendor.type === "venue") {
-      const unverifiedUnits = vendor.venueUnits.filter((u) => !u.verified).length;
+      const unverifiedUnits = vendor.venueUnits?.filter((u) => !u.verified).length || 0;
       return count + unverifiedUnits;
     }
     return count;
@@ -37,12 +50,14 @@ export default function AdminDashboard() {
 
   return (
     <div className="animate-fade-in space-y-8">
+      {/* 🧭 Header */}
       <header>
         <h1 className="text-3xl font-semibold text-gray-900 mb-2">
           Welcome, Admin 👋
         </h1>
         <p className="text-gray-600">
-          Monitor vendor registrations, verify businesses, and manage bookings — all in one place.
+          Monitor vendor registrations, verify businesses, and manage bookings —
+          all in one place.
         </p>
       </header>
 
@@ -74,31 +89,37 @@ export default function AdminDashboard() {
           Latest Vendors
         </h3>
 
-        <div className="divide-y">
-          {vendors.slice(0, 5).map((v) => (
-            <div key={v._id} className="py-3 flex items-center justify-between">
-              <div>
-                <h4 className="font-medium text-gray-900">{v.name}</h4>
-                <p className="text-sm text-gray-500">{v.city}</p>
+        {vendors.length === 0 ? (
+          <p className="text-gray-500 text-sm text-center py-4">
+            No vendors registered yet.
+          </p>
+        ) : (
+          <div className="divide-y">
+            {vendors.slice(0, 5).map((v) => (
+              <div key={v._id} className="py-3 flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-gray-900">{v.name}</h4>
+                  <p className="text-sm text-gray-500">{v.city}</p>
+                </div>
+                <span
+                  className={`px-3 py-1 text-sm rounded-full ${
+                    v.type === "freelancer"
+                      ? "bg-green-100 text-green-700"
+                      : v.venueUnits?.some((u) => u.verified)
+                      ? "bg-green-100 text-green-700"
+                      : "bg-yellow-100 text-yellow-700"
+                  }`}
+                >
+                  {v.type === "freelancer"
+                    ? "Freelancer"
+                    : v.venueUnits?.some((u) => u.verified)
+                    ? "Verified"
+                    : "Pending"}
+                </span>
               </div>
-              <span
-                className={`px-3 py-1 text-sm rounded-full ${
-                  v.type === "freelancer"
-                    ? "bg-green-100 text-green-700"
-                    : v.venueUnits.some((u) => u.verified)
-                    ? "bg-green-100 text-green-700"
-                    : "bg-yellow-100 text-yellow-700"
-                }`}
-              >
-                {v.type === "freelancer"
-                  ? "Freelancer"
-                  : v.venueUnits.some((u) => u.verified)
-                  ? "Verified"
-                  : "Pending"}
-              </span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

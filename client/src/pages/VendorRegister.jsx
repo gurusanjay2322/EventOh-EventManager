@@ -3,14 +3,20 @@ import InputField from "../components/InputField";
 import TextArea from "../components/TextArea";
 import Dropdown from "../components/Dropdown";
 import Button from "../components/Button";
-
+import Snackbar from "../components/Snackbar";
+import useAxios from "../hooks/useAxios";
 export default function VendorRegister() {
+  const { sendRequest } = useAxios();
+
   const [vendorType, setVendorType] = useState("");
   const [venues, setVenues] = useState([
     { title: "", capacity: "", pricePerDay: "", amenities: "", images: [] },
   ]);
   const [portfolio, setPortfolio] = useState([]);
   const [profilePhoto, setProfilePhoto] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState(null); // ✅ Snackbar state
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -18,38 +24,133 @@ export default function VendorRegister() {
     city: "",
     contactNumber: "",
     description: "",
+    freelancerCategory: "",
+    basePrice: "",
+    packageName: "",
+    packageDescription: "",
+    packagePrice: "",
+    eventTypes: "",
   });
-
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-  const handleVenueChange = (i, field, val) => {
-    const v = [...venues];
-    v[i][field] = val;
-    setVenues(v);
+  // 🧠 Handles normal input changes
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleVenueImages = (i, files) => {
-    const v = [...venues];
-    v[i].images = Array.from(files);
-    setVenues(v);
+  // 🏗️ Add new venue section
+  const addVenue = () => {
+    setVenues((prev) => [
+      ...prev,
+      { title: "", capacity: "", pricePerDay: "", amenities: "", images: [] },
+    ]);
   };
 
-  const addVenue = () =>
-    setVenues([...venues, { title: "", capacity: "", pricePerDay: "", amenities: "", images: [] }]);
+  // ❌ Remove specific venue section
+  const removeVenue = (index) => {
+    setVenues((prev) => prev.filter((_, i) => i !== index));
+  };
 
-  const removeVenue = (i) => setVenues(venues.filter((_, idx) => idx !== i));
+  // 📝 Update individual venue fields
+  const handleVenueChange = (index, field, value) => {
+    const updatedVenues = [...venues];
+    updatedVenues[index][field] = value;
+    setVenues(updatedVenues);
+  };
 
-  const handleSubmit = (e) => {
+  // 📸 Handle multiple image uploads for a specific venue
+  const handleVenueImages = (index, files) => {
+    const updatedVenues = [...venues];
+    updatedVenues[index].images = Array.from(files);
+    setVenues(updatedVenues);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("📝 Form submitted", { form, vendorType, venues, portfolio, profilePhoto });
+    setLoading(true);
+
+    try {
+      const formData = new FormData();
+
+      // ✅ Append common fields
+      Object.entries({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        type: vendorType,
+        city: form.city,
+        contactNumber: form.contactNumber,
+        description: form.description,
+      }).forEach(([key, val]) => formData.append(key, val));
+
+      // ✅ Type-specific data
+      if (vendorType === "freelancer") {
+        formData.append("freelancerCategory", form.freelancerCategory);
+        formData.append("basePrice", form.basePrice);
+      } else if (vendorType === "event_team") {
+        formData.append("eventTypes", form.eventTypes);
+        formData.append("packageName", form.packageName);
+        formData.append("packageDescription", form.packageDescription);
+        formData.append("packagePrice", form.packagePrice);
+      } else if (vendorType === "venue") {
+        formData.append("venueUnits", JSON.stringify(venues)); // ✅ simplified
+        venues.forEach((v) =>
+          v.images.forEach((img) => formData.append("venueImages", img))
+        );
+      }
+
+      if (profilePhoto) formData.append("profilePhoto", profilePhoto);
+      portfolio.forEach((file) => formData.append("portfolio", file));
+
+      await sendRequest("/auth/vendorRegister", "POST", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      // ✅ Show success snackbar
+      setSnackbar({
+        message: "Vendor registered successfully 🎉",
+        type: "success",
+      });
+
+      // ✅ Clear all inputs
+      setForm({
+        name: "",
+        email: "",
+        password: "",
+        city: "",
+        contactNumber: "",
+        description: "",
+        freelancerCategory: "",
+        basePrice: "",
+        packageName: "",
+        packageDescription: "",
+        packagePrice: "",
+        eventTypes: "",
+      });
+      setVendorType("");
+      setVenues([
+        { title: "", capacity: "", pricePerDay: "", amenities: "", images: [] },
+      ]);
+      setPortfolio([]);
+      setProfilePhoto(null);
+    } catch (err) {
+      console.error("❌ Registration error:", err);
+      setSnackbar({
+        message: err.message || "Registration failed",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 py-10 px-4">
       <div className="w-full max-w-6xl bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
-        {/* Header */}
         <div className="px-8 py-6 border-b bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
           <h1 className="text-3xl font-bold">Vendor Registration</h1>
-          <p className="text-indigo-100 mt-1">Join EventOh as a Vendor Partner 🚀</p>
+          <p className="text-indigo-100 mt-1">
+            Join EventOh as a Vendor Partner 🚀
+          </p>
         </div>
 
         {/* Two-column layout */}
@@ -72,10 +173,32 @@ export default function VendorRegister() {
               onChange={(e) => setVendorType(e.target.value)}
             />
 
-            <InputField label="Full Name" name="name" value={form.name} onChange={handleChange} />
-            <InputField label="Email" name="email" type="email" value={form.email} onChange={handleChange} />
-            <InputField label="Password" name="password" type="password" value={form.password} onChange={handleChange} />
-            <InputField label="City" name="city" value={form.city} onChange={handleChange} />
+            <InputField
+              label="Full Name"
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+            />
+            <InputField
+              label="Email"
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={handleChange}
+            />
+            <InputField
+              label="Password"
+              name="password"
+              type="password"
+              value={form.password}
+              onChange={handleChange}
+            />
+            <InputField
+              label="City"
+              name="city"
+              value={form.city}
+              onChange={handleChange}
+            />
             <InputField
               label="Contact Number"
               name="contactNumber"
@@ -92,7 +215,9 @@ export default function VendorRegister() {
 
             {/* Profile Photo */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Profile Photo</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Profile Photo
+              </label>
               <input
                 type="file"
                 accept="image/*"
@@ -110,7 +235,9 @@ export default function VendorRegister() {
 
             {/* Portfolio Upload */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Portfolio (multiple)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Portfolio (multiple)
+              </label>
               <input
                 type="file"
                 multiple
@@ -136,11 +263,18 @@ export default function VendorRegister() {
             {/* VENUE FIELDS */}
             {vendorType === "venue" && (
               <>
-                <h3 className="text-xl font-semibold text-indigo-600">Venue Details</h3>
+                <h3 className="text-xl font-semibold text-indigo-600">
+                  Venue Details
+                </h3>
                 {venues.map((venue, index) => (
-                  <div key={index} className="p-5 border rounded-lg bg-gray-50 shadow-sm">
+                  <div
+                    key={index}
+                    className="p-5 border rounded-lg bg-gray-50 shadow-sm"
+                  >
                     <div className="flex justify-between items-center mb-3">
-                      <h4 className="font-medium text-gray-700">Venue #{index + 1}</h4>
+                      <h4 className="font-medium text-gray-700">
+                        Venue #{index + 1}
+                      </h4>
                       {index > 0 && (
                         <button
                           type="button"
@@ -156,34 +290,50 @@ export default function VendorRegister() {
                       <InputField
                         label="Venue Name"
                         value={venue.title}
-                        onChange={(e) => handleVenueChange(index, "title", e.target.value)}
+                        onChange={(e) =>
+                          handleVenueChange(index, "title", e.target.value)
+                        }
                       />
                       <InputField
                         label="Capacity"
                         type="number"
                         value={venue.capacity}
-                        onChange={(e) => handleVenueChange(index, "capacity", e.target.value)}
+                        onChange={(e) =>
+                          handleVenueChange(index, "capacity", e.target.value)
+                        }
                       />
                       <InputField
                         label="Price Per Day (₹)"
                         type="number"
                         value={venue.pricePerDay}
-                        onChange={(e) => handleVenueChange(index, "pricePerDay", e.target.value)}
+                        onChange={(e) =>
+                          handleVenueChange(
+                            index,
+                            "pricePerDay",
+                            e.target.value
+                          )
+                        }
                       />
                       <InputField
                         label="Amenities"
                         value={venue.amenities}
-                        onChange={(e) => handleVenueChange(index, "amenities", e.target.value)}
+                        onChange={(e) =>
+                          handleVenueChange(index, "amenities", e.target.value)
+                        }
                       />
                     </div>
 
                     <div className="mt-3">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Venue Images</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Venue Images
+                      </label>
                       <input
                         type="file"
                         multiple
                         accept="image/*"
-                        onChange={(e) => handleVenueImages(index, e.target.files)}
+                        onChange={(e) =>
+                          handleVenueImages(index, e.target.files)
+                        }
                         className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-3 file:rounded-md file:border-0 file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100"
                       />
                       <div className="flex flex-wrap gap-2 mt-3">
@@ -213,7 +363,9 @@ export default function VendorRegister() {
             {/* FREELANCER FIELDS */}
             {vendorType === "freelancer" && (
               <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-indigo-600">Freelancer Details</h3>
+                <h3 className="text-xl font-semibold text-indigo-600">
+                  Freelancer Details
+                </h3>
                 <Dropdown
                   label="Freelancer Category"
                   name="freelancerCategory"
@@ -243,7 +395,9 @@ export default function VendorRegister() {
             {/* EVENT TEAM FIELDS */}
             {vendorType === "event_team" && (
               <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-indigo-600">Event Team Details</h3>
+                <h3 className="text-xl font-semibold text-indigo-600">
+                  Event Team Details
+                </h3>
                 <InputField
                   label="Package Name"
                   name="packageName"
@@ -282,6 +436,13 @@ export default function VendorRegister() {
           </div>
         </form>
       </div>
+      {snackbar && (
+        <Snackbar
+          message={snackbar.message}
+          type={snackbar.type}
+          onClose={() => setSnackbar(null)}
+        />
+      )}
     </div>
   );
 }

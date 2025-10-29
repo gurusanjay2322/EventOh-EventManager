@@ -4,7 +4,7 @@ export default function AdminLayout() {
   const navigate = useNavigate();
 
   const menu = [
-    { name: "Dashboard", path: "/admin" },
+    { name: "Dashboard", path: "/admin", exact: true },
     { name: "Vendors", path: "/admin/vendors" },
   ];
 
@@ -20,16 +20,18 @@ export default function AdminLayout() {
             Event<span className="text-indigo-600">Oh</span> Admin
           </h1>
         </div>
+
         <nav className="flex-1 p-4 space-y-2">
           {menu.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
+              end={item.exact} // ✅ exact match only for dashboard
               className={({ isActive }) =>
-                `block px-4 py-2 rounded-md text-gray-700 font-medium ${
+                `block px-4 py-2 rounded-md font-medium transition ${
                   isActive
                     ? "bg-indigo-100 text-indigo-700"
-                    : "hover:bg-gray-100"
+                    : "text-gray-700 hover:bg-gray-100"
                 }`
               }
             >
@@ -44,7 +46,7 @@ export default function AdminLayout() {
               localStorage.removeItem("token");
               navigate("/login");
             }}
-            className="w-full bg-red-500 text-white py-2 rounded-md hover:bg-red-600"
+            className="w-full bg-red-500 text-white py-2 rounded-md hover:bg-red-600 transition"
           >
             Logout
           </button>

@@ -16,13 +16,13 @@ export default function Home() {
         </p>
         <div className="mt-8 flex justify-center gap-4">
           <button
-            onClick={() => navigate("/register")}
+            onClick={() => navigate("/vendor/register")}
             className="px-6 py-3 rounded-full bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition-transform transform hover:scale-105 shadow-md"
           >
             Join as Vendor
           </button>
           <button
-            onClick={() => navigate("/customer/allVendors")}
+            onClick={() => navigate("/vendors")}
             className="px-6 py-3 rounded-full border border-gray-300 bg-white text-gray-700 font-medium hover:border-indigo-500 hover:text-indigo-600 transition-transform transform hover:scale-105 shadow-sm"
           >
             Explore as Customer

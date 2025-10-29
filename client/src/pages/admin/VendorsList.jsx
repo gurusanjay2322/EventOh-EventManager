@@ -1,12 +1,24 @@
+import { useState, useEffect } from "react";
 import useAxios from "../../hooks/useAxios";
 
 export default function AdminVendorsList() {
-  // ✅ Fetch all vendors (GET /api/admin/vendors)
-  const { data, loading, error, refetch } = useAxios({ url: "/admin/vendors" });
-  const vendors = data?.vendors || [];
-  console.log(vendors);
+  const { sendRequest, loading, error } = useAxios();
+  const [vendors, setVendors] = useState([]);
 
-  // ✅ Separate PUT request for verifying a specific venue
+  // ✅ Fetch vendors on mount
+  useEffect(() => {
+    const fetchVendors = async () => {
+      try {
+        const res = await sendRequest("/admin/vendors", "GET");
+        setVendors(res?.vendors || []);
+      } catch (err) {
+        console.error("❌ Failed to fetch vendors:", err);
+      }
+    };
+    fetchVendors();
+  }, [sendRequest]);
+
+  // ✅ Handle verification of a venue
   const handleVerify = async (vendorId, venueId) => {
     try {
       const token = localStorage.getItem("token");
@@ -26,8 +38,9 @@ export default function AdminVendorsList() {
         throw new Error(errMsg);
       }
 
-      // ✅ Refresh vendor data after successful verification
-      refetch();
+      // ✅ Re-fetch vendors after verification
+      const updated = await sendRequest("/admin/vendors", "GET");
+      setVendors(updated?.vendors || []);
     } catch (err) {
       console.error("❌ Error verifying venue:", err);
       alert(err.message || "Failed to verify venue.");
@@ -85,7 +98,7 @@ export default function AdminVendorsList() {
             </div>
 
             {/* Venue Vendors */}
-            {vendor.type === "venue" && (
+            {vendor.type === "venue" && vendor.venueUnits?.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {vendor.venueUnits.map((unit) => (
                   <div

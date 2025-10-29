@@ -21,7 +21,7 @@ export default function Login() {
       if (res.user.role === "admin") {
         window.location.href = "/admin";
       } else if (res.user.role === "vendor") {
-        window.location.href = "/vendor/";
+        window.location.href = "/vendor/profile";
       } else {
         window.location.href = "/";
       }

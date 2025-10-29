@@ -1,25 +1,21 @@
-// src/controllers/ImageUploadController.js
 import cloudinary from "../config/cloudinary.js";
 import streamifier from "streamifier";
 import Vendor from "../models/Vendor.js";
 
-/**
- * Upload images (multipart/form-data field name: images)
- * Protected: vendors only
- * After upload, we append URLs to vendor.portfolio
- */
 export const uploadImagesForVendor = async (req, res) => {
   try {
-    // must be logged in as vendor
+    // Must be logged in as vendor
     if (!req.user || req.user.role !== "vendor") {
       return res.status(403).json({ message: "Only vendors can upload images" });
     }
 
     const vendorId = req.params.id;
     const vendor = await Vendor.findById(vendorId);
-    if (!vendor) return res.status(404).json({ message: "Vendor not found" });
+    if (!vendor) {
+      return res.status(404).json({ message: "Vendor not found" });
+    }
 
-    // ownership check
+    // Ownership check
     if (vendor.userId.toString() !== req.user.id.toString()) {
       return res.status(403).json({ message: "You can only upload to your own profile" });
     }
@@ -30,19 +26,21 @@ export const uploadImagesForVendor = async (req, res) => {
 
     const uploadedURLs = [];
 
-    // helper to upload a single file buffer using upload_stream
+    // Helper to upload buffer to Cloudinary
     const uploadBuffer = (fileBuffer, filename) => {
       return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           {
-            folder: `eventoh/vendors/${vendorId}`, // organizes files per vendor
-            public_id: filename.replace(/\.[^/.]+$/, ""), // remove extension
+            folder: `eventoh/vendors/${vendorId}`,
+            public_id: filename.replace(/\.[^/.]+$/, ""),
             overwrite: false,
             resource_type: "image",
-            // optional: transformations: { width: 1200, crop: "limit" }
           },
           (error, result) => {
-            if (error) return reject(error);
+            if (error) {
+              console.error("Cloudinary Upload Error:", error);
+              return reject(error);
+            }
             resolve(result);
           }
         );
@@ -50,17 +48,16 @@ export const uploadImagesForVendor = async (req, res) => {
       });
     };
 
-    // upload each file sequentially (or Promise.all for parallel)
+    // Upload sequentially
     for (const file of req.files) {
       const result = await uploadBuffer(file.buffer, file.originalname);
-      // result.secure_url is the canonical public URL
       uploadedURLs.push({
         url: result.secure_url,
         public_id: result.public_id,
       });
     }
 
-    // Append to vendor.portfolio (avoid duplicates)
+    // Append to vendor portfolio
     const existing = vendor.portfolio || [];
     const newUrls = uploadedURLs.map((u) => u.url);
     vendor.portfolio = Array.from(new Set([...existing, ...newUrls]));
@@ -73,6 +70,10 @@ export const uploadImagesForVendor = async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Image Upload Error:", err);
-    return res.status(500).json({ message: "Upload failed", error: err.message });
+    // Always respond with JSON
+    return res.status(500).json({
+      message: "Upload failed",
+      error: err.message || "Unknown error",
+    });
   }
 };

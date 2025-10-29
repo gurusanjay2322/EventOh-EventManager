@@ -22,7 +22,34 @@ export const getAllVendors = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+/**
+ * @desc Get logged-in vendor profile
+ * @route GET /api/vendor/myProfile
+ * @access Vendor only
+ */
+export const getMyVendorProfile = async (req, res) => {
+  try {
+    // Ensure only vendors can access
+    if (req.user.role !== "vendor") {
+      return res.status(403).json({ message: "Access denied: Not a vendor" });
+    }
 
+    // Find vendor document by logged-in user's ID
+    const vendor = await Vendor.findOne({ userId: req.user.id }).populate(
+      "userId",
+      "name email role"
+    );
+
+    if (!vendor) {
+      return res.status(404).json({ message: "Vendor profile not found" });
+    }
+
+    res.status(200).json({ vendor });
+  } catch (err) {
+    console.error("❌ Get My Vendor Profile Error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
 /**
  * @desc Get single vendor by ID
  * @route GET /api/vendors/:id

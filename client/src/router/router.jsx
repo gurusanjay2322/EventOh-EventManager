@@ -14,6 +14,10 @@ import VendorRegister from "../pages/VendorRegister";
 import AdminLayout from "../pages/admin/AdminLayout";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import AdminVendorsList from "../pages/admin/VendorsList";
+import VendorDashboard from "../pages/vendors/VendorDashboard";
+import VendorProfile from "../pages/vendors/VendorPofile";
+import CustomerProfile from "../pages/CustomerProfile";
+import VendorDetails from "../pages/vendors/VendorDetails";
 
 /* =======================
    🔐 Route Guards
@@ -68,25 +72,20 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: "register", element: <CustomerRegister /> },
+      { path: "profile", element: <CustomerProfile/>},
       { path: "vendors", element: <VendorsList /> },
+      { path: "vendors/:id", element: <VendorDetails/>},
 
       // 💼 Vendor Pages (reusing Layout)
       { path: "vendor/register", element: <VendorRegister /> },
       {
         path: "vendor/dashboard",
-        element: (
-          <VendorProtectedRoute>
-            <div className="text-center p-10">
-              <h2 className="text-2xl font-semibold text-gray-900">
-                Vendor Dashboard
-              </h2>
-              <p className="text-gray-600 mt-2">
-                Welcome, vendor! Manage your venues and bookings here.
-              </p>
-            </div>
-          </VendorProtectedRoute>
-        ),
+        element: <VendorDashboard/>
       },
+      {
+        path: "vendor/profile",
+        element: <VendorProfile/>
+      }
     ],
   },
 

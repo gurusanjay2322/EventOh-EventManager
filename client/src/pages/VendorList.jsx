@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom"; // ⬅️ import this
 
 export default function VendorsList() {
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedType, setSelectedType] = useState("all");
+  const navigate = useNavigate(); // ⬅️ initialize
 
   useEffect(() => {
     const fetchVendors = async () => {
@@ -19,7 +21,7 @@ export default function VendorsList() {
     };
     fetchVendors();
   }, []);
-  console.log(vendors);
+
   const filteredVendors =
     selectedType === "all"
       ? vendors
@@ -71,7 +73,7 @@ export default function VendorsList() {
                   <img
                     src={
                       vendor.profilePhoto ||
-                      (vendor.venueUnits?.[0]?.images?.[0]) ||
+                      vendor.venueUnits?.[0]?.images?.[0] ||
                       "https://via.placeholder.com/400x300?text=Vendor"
                     }
                     alt={vendor.name}
@@ -101,8 +103,9 @@ export default function VendorsList() {
                     )}
                   </div>
 
+                  {/* 🚀 Navigate to Vendor Details */}
                   <button
-                    onClick={() => alert(`Viewing ${vendor.name}`)}
+                    onClick={() => navigate(`/vendors/${vendor._id}`)}
                     className="w-full mt-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-all"
                   >
                     View Profile
