@@ -16,7 +16,7 @@ const router = express.Router();
  * /api/admin/vendors:
  *   get:
  *     summary: Get all vendors (admin only)
- *     description: Returns a list of all vendors. Only accessible by admin users.
+ *     description: Returns a list of all vendors with their venue units, freelancer categories, or event team details. Only accessible by admin users.
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
@@ -28,9 +28,6 @@ const router = express.Router();
  *             schema:
  *               type: object
  *               properties:
- *                 message:
- *                   type: string
- *                   example: "All vendors fetched successfully"
  *                 vendors:
  *                   type: array
  *                   items:
@@ -41,13 +38,27 @@ const router = express.Router();
  *                         example: "671fbc20d6b2131a8e6b1f45"
  *                       name:
  *                         type: string
- *                         example: "Rohan Vendor"
+ *                         example: "Royal Banquet Hall"
+ *                       type:
+ *                         type: string
+ *                         example: "venue"
  *                       city:
  *                         type: string
  *                         example: "Mumbai"
- *                       verified:
- *                         type: boolean
- *                         example: false
+ *                       venueUnits:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             _id:
+ *                               type: string
+ *                               example: "671fbc20d6b2131a8e6b1f46"
+ *                             title:
+ *                               type: string
+ *                               example: "Grand Ballroom"
+ *                             verified:
+ *                               type: boolean
+ *                               example: false
  *       401:
  *         description: Unauthorized (missing or invalid token)
  *       403:
@@ -56,24 +67,31 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/admin/vendors/{id}/verify:
+ * /api/admin/vendors/{vendorId}/venue/{venueId}/verify:
  *   put:
- *     summary: Verify a vendor (admin only)
- *     description: Allows the admin to verify a vendor account, marking them as verified in the system.
+ *     summary: Verify a specific venue unit (admin only)
+ *     description: Allows the admin to verify a specific venue unit under a vendor. Once verified, the venue is marked as trusted and visible to customers as a verified business.
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - name: id
+ *       - name: vendorId
  *         in: path
  *         required: true
- *         description: ID of the vendor to verify
+ *         description: ID of the vendor who owns the venue
  *         schema:
  *           type: string
- *           example: 671fbc20d6b2131a8e6b1f45
+ *           example: 690252831d2bd3c18450e5e3
+ *       - name: venueId
+ *         in: path
+ *         required: true
+ *         description: ID of the specific venue unit to verify
+ *         schema:
+ *           type: string
+ *           example: 690252831d2bd3c18450e5e4
  *     responses:
  *       200:
- *         description: Vendor verified successfully
+ *         description: Venue unit verified successfully
  *         content:
  *           application/json:
  *             schema:
@@ -81,37 +99,38 @@ const router = express.Router();
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Vendor verified successfully
- *                 vendor:
+ *                   example: Venue "Grand Ballroom" verified successfully
+ *                 venueUnit:
  *                   type: object
  *                   properties:
  *                     _id:
  *                       type: string
- *                       example: 671fbc20d6b2131a8e6b1f45
- *                     name:
+ *                       example: 690252831d2bd3c18450e5e4
+ *                     title:
  *                       type: string
- *                       example: Rohan Vendor
+ *                       example: Grand Ballroom
  *                     verified:
  *                       type: boolean
  *                       example: true
  *       400:
- *         description: Invalid vendor ID
+ *         description: Invalid vendor or venue ID
  *       401:
  *         description: Unauthorized
  *       403:
  *         description: Forbidden (not admin)
  *       404:
- *         description: Vendor not found
+ *         description: Vendor or venue not found
  */
 
 router.use(VerifyToken);
-router.get("/vendors", VerifyToken,verifyAdmin, getAllVendors);
+
+router.get("/vendors", VerifyToken, verifyAdmin, getAllVendors);
+
 router.put(
   "/vendors/:vendorId/venue/:venueId/verify",
   VerifyToken,
   verifyAdmin,
   verifyVenue
 );
-
 
 export default router;
