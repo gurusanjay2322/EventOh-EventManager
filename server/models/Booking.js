@@ -17,7 +17,11 @@ const bookingSchema = new mongoose.Schema(
     venueUnitId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "VenueUnit",
+      required: function () {
+        return this.bookingType === "venue"; // only required for venues
+      },
     },
+
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
     totalAmount: { type: Number, required: true },

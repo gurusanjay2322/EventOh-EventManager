@@ -75,19 +75,30 @@ export const createBooking = async (req, res) => {
     const advanceAmount = totalAmount * advancePercent;
 
     // ✅ Create booking
-    const booking = await Booking.create({
+    // ✅ Build booking data conditionally
+    const bookingData = {
       customerId,
       vendorId,
-      venueUnitId,
       startDate,
       endDate,
       totalAmount,
-      advanceAmount, // 💸 auto-calculated
+      advanceAmount,
       notes,
       bookingType: vendor.type,
       paymentStatus: advanceAmount > 0 ? "partial" : "pending",
       bookingStatus: "pending",
-    });
+    };
+
+    // Only include venueUnitId if it's valid and vendor is a venue
+    if (
+      vendor.type === "venue" &&
+      venueUnitId &&
+      mongoose.isValidObjectId(venueUnitId)
+    ) {
+      bookingData.venueUnitId = venueUnitId;
+    }
+
+    const booking = await Booking.create(bookingData);
 
     res.status(201).json({
       message: "Booking created successfully",
@@ -190,7 +201,9 @@ export const updateBookingStatus = async (req, res) => {
     const { status } = req.body;
 
     if (req.user.role !== "vendor") {
-      return res.status(403).json({ message: "Only vendors can update booking status" });
+      return res
+        .status(403)
+        .json({ message: "Only vendors can update booking status" });
     }
 
     const allowed = ["pending", "confirmed", "cancelled", "completed"];
@@ -202,7 +215,9 @@ export const updateBookingStatus = async (req, res) => {
 
     // Make sure the vendor owns this booking
     if (booking.vendorId.toString() !== req.user.id) {
-      return res.status(403).json({ message: "Not authorized to modify this booking" });
+      return res
+        .status(403)
+        .json({ message: "Not authorized to modify this booking" });
     }
 
     booking.bookingStatus = status;
