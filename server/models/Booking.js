@@ -1,33 +1,49 @@
+// models/Booking.js
+
 import mongoose from "mongoose";
 
-const { Schema } = mongoose;
-
-const BookingSchema = new Schema({
-  customerId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  vendorId: { type: Schema.Types.ObjectId, ref: "Vendor", required: true },
-
-  // For venues that have multiple halls/units
-  venueUnitId: { type: Schema.Types.ObjectId, ref: "Vendor.venueUnits" },
-
-  startDate: { type: Date, required: true },
-  endDate: { type: Date, required: true },
-
-  totalAmount: { type: Number, required: true },
-  paymentStatus: {
-    type: String,
-    enum: ["pending", "paid", "cancelled", "refunded"],
-    default: "pending",
+const bookingSchema = new mongoose.Schema(
+  {
+    vendorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Vendor",
+      required: true,
+    },
+    customerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    venueUnitId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "VenueUnit",
+    },
+    startDate: { type: Date, required: true },
+    endDate: { type: Date, required: true },
+    totalAmount: { type: Number, required: true },
+    advanceAmount: { type: Number, default: 0 }, // 💸 NEW FIELD
+    notes: { type: String },
+    bookingType: {
+      type: String,
+      enum: ["venue", "freelancer", "event_team"],
+      required: true,
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "partial", "paid", "refunded"],
+      default: "pending",
+    },
+    bookingStatus: {
+      type: String,
+      enum: ["pending", "confirmed", "cancelled", "completed"],
+      default: "pending",
+    },
+    finalPaymentReminderSent: {
+      type: Boolean,
+      default: false,
+    },
   },
-  bookingStatus: {
-    type: String,
-    enum: ["pending", "confirmed", "cancelled", "completed"],
-    default: "pending",
-  },
+  { timestamps: true }
+);
 
-  // Optional info
-  notes: String,
-
-  createdAt: { type: Date, default: Date.now },
-});
-
-export default mongoose.model("Booking", BookingSchema);
+export default mongoose.model("Booking", bookingSchema);

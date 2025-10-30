@@ -23,7 +23,7 @@ export default function AdminVendorsList() {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(
-        `/api/admin/vendors/${vendorId}/venue/${venueId}/verify`,
+        `${import.meta.env.VITE_API_URL}/api/admin/vendors/${vendorId}/venue/${venueId}/verify`,
         {
           method: "PUT",
           headers: {

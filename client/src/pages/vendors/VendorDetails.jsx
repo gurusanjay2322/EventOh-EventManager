@@ -1,28 +1,36 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import useAxios from "../../hooks/useAxios";
-
+import { loadStripe } from "@stripe/stripe-js";
 export default function VendorDetails() {
+  const stripePromise = loadStripe(import.meta.env.VITE_API_STRIPE_PUBLIC_KEY);
   const { id } = useParams();
   const navigate = useNavigate();
   const { sendRequest } = useAxios();
+  const storedUser = JSON.parse(localStorage.getItem("user"));
+  const customerEmail = storedUser?.email;
 
   const [vendor, setVendor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [showAdvanceStep, setShowAdvanceStep] = useState(false);
+  const [paymentBreakdown, setPaymentBreakdown] = useState(null);
+
   const [booking, setBooking] = useState({
     venueUnitId: "",
     startDate: "",
     endDate: "",
     notes: "",
   });
+
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     type: "",
   });
 
+  // 🔹 Fetch vendor details
   useEffect(() => {
     const fetchVendor = async () => {
       try {
@@ -52,51 +60,92 @@ export default function VendorDetails() {
     setShowModal(true);
   };
 
-  const handleBookingChange = (e) => {
-    setBooking({ ...booking, [e.target.name]: e.target.value });
-  };
+  // 📦 Handle booking input change
+const handleBookingChange = (e) => {
+  setBooking({ ...booking, [e.target.name]: e.target.value });
+};
 
-  const handleConfirmBooking = async () => {
-    try {
-      if (new Date(booking.startDate) > new Date(booking.endDate)) {
-        setSnackbar({
-          open: true,
-          message: "End date cannot be earlier than start date!",
-          type: "error",
-        });
-        return;
-      }
-
-      const payload = {
-        vendorId: vendor._id,
-        venueUnitId: booking.venueUnitId || "",
-        startDate: booking.startDate,
-        endDate: booking.endDate,
-        totalAmount: 0,
-        notes: booking.notes,
-        bookingType: vendor.type,
-        paymentStatus: "pending",
-        bookingStatus: "pending",
-      };
-
-      await sendRequest("/bookings", "POST", payload);
-
-      setShowModal(false);
+// ✨ Step 1: Confirm booking and get payment details
+const handleConfirmBooking = async () => {
+  try {
+    if (new Date(booking.startDate) > new Date(booking.endDate)) {
       setSnackbar({
         open: true,
-        message: "✅ Booking request sent successfully!",
-        type: "success",
-      });
-    } catch (err) {
-      console.error("❌ Booking error:", err);
-      setSnackbar({
-        open: true,
-        message: err.message || "Booking failed.",
+        message: "End date cannot be earlier than start date!",
         type: "error",
       });
+      return;
     }
-  };
 
+    const payload = {
+      vendorId: vendor._id,
+      venueUnitId: booking.venueUnitId || "",
+      startDate: booking.startDate,
+      endDate: booking.endDate,
+      totalAmount:
+        vendor.pricing?.basePrice ||
+        vendor.venueUnits?.find((v) => v._id === booking.venueUnitId)?.pricePerDay ||
+        0,
+      notes: booking.notes,
+      bookingType: vendor.type,
+      paymentStatus: "pending",
+      bookingStatus: "pending",
+    };
+
+    console.log("📦 Booking Payload:", payload);
+
+    // ✅ Create booking entry in backend
+    const data = await sendRequest("/bookings", "POST", payload);
+
+    if (data?.paymentBreakdown) {
+      setPaymentBreakdown(data.paymentBreakdown);
+      setShowAdvanceStep(true);
+    } else {
+      setSnackbar({
+        open: true,
+        message: "Booking confirmed but payment details missing.",
+        type: "warning",
+      });
+      setShowModal(false);
+    }
+  } catch (err) {
+    console.error("❌ Booking error:", err);
+    setSnackbar({
+      open: true,
+      message: err.message || "Booking failed.",
+      type: "error",
+    });
+  }
+};
+
+// ✨ Step 2: Trigger Stripe payment
+const handleMakePayment = async () => {
+  try {
+    const currentUser = JSON.parse(localStorage.getItem("user")); // ensure we have the email
+
+    const payload = {
+      amount: paymentBreakdown.advanceAmount, // use actual advance amount
+      vendorName: vendor.name,
+      customerEmail: currentUser?.email,
+    };
+
+    const response = await sendRequest(
+      "/payments/create-checkout-session",
+      "POST",
+      payload
+    );
+
+    console.log("✅ Session Response:", response);
+
+    // ✅ Use `response.url` instead of `response.data.url`
+    window.location.href = response.url;
+  } catch (error) {
+    console.error("❌ Payment failed:", error);
+  }
+};
+
+
+  // ✨ Loading states
   if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-600">
@@ -118,13 +167,12 @@ export default function VendorDetails() {
       </div>
     );
 
-  const { userId, name, type, city, description, profilePhoto, venueUnits } =
-    vendor;
+  const { name, type, city, description, profilePhoto, venueUnits } = vendor;
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-6 flex justify-center">
       <div className="w-full max-w-5xl bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
-        {/* Header Section */}
+        {/* Header */}
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-8">
           <img
             src={
@@ -142,8 +190,6 @@ export default function VendorDetails() {
             <p className="text-gray-500">{city}</p>
             <p className="mt-3 text-gray-700 max-w-2xl">{description}</p>
           </div>
-
-          {/* Book Now Button */}
           <button
             onClick={handleBookNow}
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg font-semibold shadow-md transition-all"
@@ -152,9 +198,8 @@ export default function VendorDetails() {
           </button>
         </div>
 
-        {/* Vendor Details Section */}
+        {/* Vendor Details */}
         <div className="border-t border-gray-200 pt-6 mt-6 space-y-6">
-          {/* Pricing and Type Info */}
           <div className="grid sm:grid-cols-2 gap-6">
             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
               <h3 className="text-lg font-semibold text-gray-800 mb-2">
@@ -184,7 +229,6 @@ export default function VendorDetails() {
               )}
             </div>
 
-            {/* Rating / Stats */}
             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 flex flex-col justify-center">
               <h3 className="text-lg font-semibold text-gray-800 mb-2">
                 Ratings & Reviews ⭐
@@ -202,7 +246,6 @@ export default function VendorDetails() {
             </div>
           </div>
 
-          {/* Portfolio for freelancers / event teams */}
           {vendor.portfolio?.length > 0 && (
             <div>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">
@@ -221,7 +264,6 @@ export default function VendorDetails() {
             </div>
           )}
 
-          {/* Venue Units (if vendor is venue owner) */}
           {type === "venue" && vendor.venueUnits?.length > 0 && (
             <div>
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">
@@ -266,7 +308,11 @@ export default function VendorDetails() {
       {snackbar.open && (
         <div
           className={`fixed bottom-6 right-6 px-6 py-3 rounded-lg shadow-lg text-white ${
-            snackbar.type === "error" ? "bg-red-600" : "bg-green-600"
+            snackbar.type === "error"
+              ? "bg-red-600"
+              : snackbar.type === "warning"
+              ? "bg-yellow-500"
+              : "bg-green-600"
           }`}
         >
           {snackbar.message}
@@ -277,77 +323,120 @@ export default function VendorDetails() {
       {showModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <h2 className="text-2xl font-semibold mb-4 text-gray-800">
-              Book {vendor.name}
-            </h2>
+            {!showAdvanceStep ? (
+              <>
+                <h2 className="text-2xl font-semibold mb-4 text-gray-800">
+                  Book {vendor.name}
+                </h2>
 
-            {type === "venue" && (
-              <div className="mb-4">
-                <label className="text-sm text-gray-600">Select Venue</label>
-                <select
-                  name="venueUnitId"
-                  value={booking.venueUnitId}
-                  onChange={handleBookingChange}
-                  className="w-full mt-1 border border-gray-300 rounded-lg p-2"
-                >
-                  <option value="">Select a venue</option>
-                  {venueUnits.map((v) => (
-                    <option key={v._id} value={v._id}>
-                      {v.title} — ₹{v.pricePerDay}/day
-                    </option>
-                  ))}
-                </select>
-              </div>
+                {type === "venue" && (
+                  <div className="mb-4">
+                    <label className="text-sm text-gray-600">
+                      Select Venue
+                    </label>
+                    <select
+                      name="venueUnitId"
+                      value={booking.venueUnitId}
+                      onChange={handleBookingChange}
+                      className="w-full mt-1 border border-gray-300 rounded-lg p-2"
+                    >
+                      <option value="">Select a venue</option>
+                      {venueUnits.map((v) => (
+                        <option key={v._id} value={v._id}>
+                          {v.title} — ₹{v.pricePerDay}/day
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="text-sm text-gray-600">Start Date</label>
+                    <input
+                      type="date"
+                      name="startDate"
+                      value={booking.startDate}
+                      onChange={handleBookingChange}
+                      className="w-full border border-gray-300 rounded-lg p-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-600">End Date</label>
+                    <input
+                      type="date"
+                      name="endDate"
+                      value={booking.endDate}
+                      onChange={handleBookingChange}
+                      className="w-full border border-gray-300 rounded-lg p-2"
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <label className="text-sm text-gray-600">
+                    Notes (optional)
+                  </label>
+                  <textarea
+                    name="notes"
+                    value={booking.notes}
+                    onChange={handleBookingChange}
+                    className="w-full border border-gray-300 rounded-lg p-2"
+                    rows="3"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmBooking}
+                    className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold"
+                  >
+                    Confirm Booking
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl font-semibold mb-4 text-gray-800">
+                  Payment Breakdown 💸
+                </h2>
+                <p className="text-gray-700">
+                  <strong>Total:</strong> ₹{paymentBreakdown.totalAmount}
+                </p>
+                <p className="text-gray-700">
+                  <strong>Advance ({paymentBreakdown.percentage}):</strong> ₹
+                  {paymentBreakdown.advanceAmount}
+                </p>
+                <p className="text-gray-700 mb-4">
+                  <strong>Remaining:</strong> ₹
+                  {paymentBreakdown.remainingAmount}
+                </p>
+                <p className="text-gray-500 text-sm mb-6 italic">
+                  {paymentBreakdown.note}
+                </p>
+
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleMakePayment}
+                    className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold"
+                  >
+                    Pay ₹{paymentBreakdown.advanceAmount}
+                  </button>
+                </div>
+              </>
             )}
-
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="text-sm text-gray-600">Start Date</label>
-                <input
-                  type="date"
-                  name="startDate"
-                  value={booking.startDate}
-                  onChange={handleBookingChange}
-                  className="w-full border border-gray-300 rounded-lg p-2"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-600">End Date</label>
-                <input
-                  type="date"
-                  name="endDate"
-                  value={booking.endDate}
-                  onChange={handleBookingChange}
-                  className="w-full border border-gray-300 rounded-lg p-2"
-                />
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <label className="text-sm text-gray-600">Notes (optional)</label>
-              <textarea
-                name="notes"
-                value={booking.notes}
-                onChange={handleBookingChange}
-                className="w-full border border-gray-300 rounded-lg p-2"
-                rows="3"
-              />
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmBooking}
-                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold"
-              >
-                Confirm Booking
-              </button>
-            </div>
           </div>
         </div>
       )}

@@ -43,7 +43,7 @@ export default function Navbar() {
             </NavLink>
 
             <NavLink
-              to="/event-team"
+              to="/vendors"
               className={({ isActive }) =>
                 `hover:text-indigo-600 ${
                   isActive ? "text-indigo-600 font-medium" : "text-gray-700"
@@ -51,17 +51,6 @@ export default function Navbar() {
               }
             >
               Vendors
-            </NavLink>
-
-            <NavLink
-              to="/venue"
-              className={({ isActive }) =>
-                `hover:text-indigo-600 ${
-                  isActive ? "text-indigo-600 font-medium" : "text-gray-700"
-                }`
-              }
-            >
-              Venues
             </NavLink>
 
             {/* 🌈 Role-Based Links */}
@@ -100,6 +89,19 @@ export default function Navbar() {
                 }
               >
                 Admin Dashboard
+              </NavLink>
+            )}
+
+            {role === "customer" && (
+              <NavLink
+                to="/profile"
+                className={({ isActive }) =>
+                  `hover:text-indigo-600 ${
+                    isActive ? "text-indigo-600 font-medium" : "text-gray-700"
+                  }`
+                }
+              >
+                My Bookings
               </NavLink>
             )}
 

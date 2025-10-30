@@ -18,6 +18,7 @@ import VendorDashboard from "../pages/vendors/VendorDashboard";
 import VendorProfile from "../pages/vendors/VendorPofile";
 import CustomerProfile from "../pages/CustomerProfile";
 import VendorDetails from "../pages/vendors/VendorDetails";
+import PaymentSuccess from "../pages/PaymentSuccess";
 
 /* =======================
    🔐 Route Guards
@@ -73,6 +74,7 @@ const router = createBrowserRouter([
       { index: true, element: <Home /> },
       { path: "register", element: <CustomerRegister /> },
       { path: "profile", element: <CustomerProfile/>},
+      { path: "payment-success", element: <PaymentSuccess/>},
       { path: "vendors", element: <VendorsList /> },
       { path: "vendors/:id", element: <VendorDetails/>},
 
