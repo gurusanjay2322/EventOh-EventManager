@@ -45,7 +45,7 @@ export default function PaymentSuccess() {
       }
 
       // Redirect after short delay
-      setTimeout(() => navigate("/profile"), 2000);
+      setTimeout(() => navigate("/profile"), 1000);
     };
 
     handlePayment();
