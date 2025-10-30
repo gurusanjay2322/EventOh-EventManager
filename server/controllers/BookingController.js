@@ -180,8 +180,8 @@ export const payRemainingAmount = async (req, res) => {
         },
       ],
       mode: "payment",
-      success_url: `${process.env.CLIENT_URL}/payment-success?bookingId=${booking._id}&final=true`,
-      cancel_url: `${process.env.CLIENT_URL}/bookings`,
+      success_url: `${process.env.FRONTEND_URL}/payment-success?bookingId=${bookingId}&final=false`,
+      cancel_url: `${process.env.FRONTEND_URL}/payment-failed`,
     });
 
     res.json({ url: session.url });

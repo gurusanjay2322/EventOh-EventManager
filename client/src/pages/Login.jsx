@@ -4,38 +4,52 @@ import Button from "../components/Button";
 import useAxios from "../hooks/useAxios";
 
 export default function Login() {
-  const [form, setForm] = useState({ email: "", password: "", role: "customer" });
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+    role: "customer",
+  });
   const { sendRequest, loading } = useAxios();
 
   const handleChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await sendRequest("/auth/login", "POST", form);
-      localStorage.setItem("token", res.token);
-      localStorage.setItem("role", res.user.role);
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const res = await sendRequest("/auth/login", "POST", form);
 
-      // 🧭 Navigate based on role
-      if (res.user.role === "admin") {
-        window.location.href = "/admin";
-      } else if (res.user.role === "vendor") {
-        window.location.href = "/vendor/profile";
-      } else {
-        window.location.href = "/";
-      }
-    } catch (err) {
-      alert(err?.message || "Login failed");
+    const user = typeof res.user === "string" ? JSON.parse(res.user) : res.user;
+
+    // ✅ Fix here
+    const role = user.role;
+
+    localStorage.setItem("token", res.token);
+    localStorage.setItem("role", role);
+    localStorage.setItem("user", JSON.stringify(user));
+
+    // 🧭 Navigate based on role
+    if (role === "admin") {
+      window.location.href = "/admin";
+    } else if (role === "vendor") {
+      window.location.href = "/vendor/profile";
+    } else {
+      window.location.href = "/";
     }
-  };
+  } catch (err) {
+    alert(err?.message || "Login failed");
+  }
+};
+
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
       {/* Left side – image or branding */}
       <div className="hidden md:flex flex-1 bg-gradient-to-br from-indigo-600 to-purple-600 text-white items-center justify-center">
         <div className="text-center px-10">
-          <h1 className="text-4xl font-bold mb-2 tracking-tight">Welcome Back 👋</h1>
+          <h1 className="text-4xl font-bold mb-2 tracking-tight">
+            Welcome Back 👋
+          </h1>
           <p className="text-indigo-100 text-lg max-w-md mx-auto">
             Sign in to your Event-Oh account and manage your events like a pro.
           </p>
@@ -54,7 +68,9 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="flex justify-between items-center">
-              <label className="text-sm font-medium text-gray-700">Login as</label>
+              <label className="text-sm font-medium text-gray-700">
+                Login as
+              </label>
               <select
                 name="role"
                 value={form.role}

@@ -9,6 +9,7 @@ export default function VendorDetails() {
   const { sendRequest } = useAxios();
   const storedUser = JSON.parse(localStorage.getItem("user"));
   const customerEmail = storedUser?.email;
+  const [bookedDates, setBookedDates] = useState([]);
 
   const [vendor, setVendor] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -36,6 +37,18 @@ export default function VendorDetails() {
       try {
         const data = await sendRequest(`/vendors/${id}`, "GET");
         setVendor(data);
+
+        // ✅ Fetch booked dates
+        const response = await sendRequest(
+          `/vendors/${id}/booked-dates`,
+          "GET"
+        );
+        const bookedArray = Array.isArray(response)
+          ? response
+          : response.bookedDates || []; // handle both response shapes
+
+        setBookedDates(bookedArray);
+        console.log(bookedArray);
       } catch (err) {
         console.error("❌ Failed to fetch vendor:", err);
         setError("Failed to load vendor details.");
@@ -61,89 +74,179 @@ export default function VendorDetails() {
   };
 
   // 📦 Handle booking input change
-const handleBookingChange = (e) => {
-  setBooking({ ...booking, [e.target.name]: e.target.value });
-};
+  const handleBookingChange = (e) => {
+    setBooking({ ...booking, [e.target.name]: e.target.value });
+  };
 
-// ✨ Step 1: Confirm booking and get payment details
-const handleConfirmBooking = async () => {
-  try {
-    if (new Date(booking.startDate) > new Date(booking.endDate)) {
+  const handleConfirmBooking = async () => {
+    try {
+      const storedUser = JSON.parse(localStorage.getItem("user"));
+      if (!storedUser || !storedUser.id) {
+        setSnackbar({
+          open: true,
+          message: "Please log in before booking.",
+          type: "error",
+        });
+        navigate("/login");
+        return;
+      }
+
+      if (!booking.startDate || !booking.endDate) {
+        setSnackbar({
+          open: true,
+          message: "Please select both start and end dates.",
+          type: "error",
+        });
+        return;
+      }
+
+      if (new Date(booking.endDate) < new Date(booking.startDate)) {
+        setSnackbar({
+          open: true,
+          message: "End date cannot be before start date.",
+          type: "error",
+        });
+        return;
+      }
+
+      // 🏛 For venues, ensure a unit is selected
+      if (vendor.type === "venue" && !booking.venueUnitId) {
+        setSnackbar({
+          open: true,
+          message: "Please select a venue unit.",
+          type: "error",
+        });
+        return;
+      }
+
+      // ✅ Check date overlap
+      if (Array.isArray(bookedDates)) {
+        const isOverlapping = bookedDates.some(({ startDate, endDate }) => {
+          const bookedStart = new Date(startDate);
+          const bookedEnd = new Date(endDate);
+          const selectedStart = new Date(booking.startDate);
+          const selectedEnd = new Date(booking.endDate);
+          return selectedStart <= bookedEnd && selectedEnd >= bookedStart;
+        });
+
+        if (isOverlapping) {
+          setSnackbar({
+            open: true,
+            message:
+              "Selected dates are already booked. Please choose another range.",
+            type: "error",
+          });
+          return;
+        }
+      }
+
+      // ✅ Calculate total, advance, remaining amounts
+      const days =
+        (new Date(booking.endDate) - new Date(booking.startDate)) /
+        (1000 * 60 * 60 * 24);
+
+      const venuePrice =
+        vendor.type === "venue"
+          ? vendor.venueUnits.find((v) => v._id === booking.venueUnitId)
+              ?.pricePerDay || 0
+          : vendor.pricing?.basePrice || 0;
+
+      const totalAmount = days * venuePrice;
+      const advanceAmount = totalAmount * 0.2;
+      const remainingAmount = totalAmount - advanceAmount;
+
+      setPaymentBreakdown({
+        totalAmount,
+        advanceAmount,
+        remainingAmount,
+        percentage: "20%",
+        note: "Pay 20% advance now to confirm your booking. The remaining 80% must be paid after the event date.",
+      });
+
+      // ✅ Prepare booking payload
+      const payload = {
+        vendorId: id,
+        customerId: storedUser.id,
+        bookingType: vendor.type,
+        startDate: booking.startDate,
+        endDate: booking.endDate,
+        totalAmount,
+        advanceAmount,
+        remainingAmount,
+        notes: booking.notes,
+        status: "pending_advance_payment",
+      };
+
+      if (vendor.type === "venue" && booking.venueUnitId) {
+        payload.venueUnitId = booking.venueUnitId;
+      }
+
+      // ✅ Create the booking
+      await sendRequest("/bookings", "POST", payload);
+
+      // 🧩 PATCH vendor availability (mark selected dates as booked)
+      const token = localStorage.getItem("token");
+      const selectedDates = [];
+      let currentDate = new Date(booking.startDate);
+      const endDate = new Date(booking.endDate);
+
+      // Generate array of booked dates (inclusive)
+      while (currentDate <= endDate) {
+        selectedDates.push(currentDate.toISOString().split("T")[0]);
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      await fetch(
+        `${import.meta.env.VITE_API_URL}/api/vendors/${id}/availability`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ bookedDates: selectedDates }),
+        }
+      );
+
+      console.log("✅ Vendor availability updated:", selectedDates);
+
+      // ✅ Move to advance payment step
+      setShowAdvanceStep(true);
+    } catch (error) {
+      console.error("❌ Booking creation failed:", error);
       setSnackbar({
         open: true,
-        message: "End date cannot be earlier than start date!",
+        message: "Something went wrong while confirming the booking.",
         type: "error",
       });
-      return;
     }
+  };
 
-    const payload = {
-      vendorId: vendor._id,
-      venueUnitId: booking.venueUnitId || "",
-      startDate: booking.startDate,
-      endDate: booking.endDate,
-      totalAmount:
-        vendor.pricing?.basePrice ||
-        vendor.venueUnits?.find((v) => v._id === booking.venueUnitId)?.pricePerDay ||
-        0,
-      notes: booking.notes,
-      bookingType: vendor.type,
-      paymentStatus: "pending",
-      bookingStatus: "pending",
-    };
+  // ✨ Step 2: Trigger Stripe payment
+  const handleMakePayment = async () => {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem("user")); // ensure we have the email
 
-    console.log("📦 Booking Payload:", payload);
+      const payload = {
+        amount: paymentBreakdown.advanceAmount, // use actual advance amount
+        vendorName: vendor.name,
+        customerEmail: currentUser?.email,
+      };
 
-    // ✅ Create booking entry in backend
-    const data = await sendRequest("/bookings", "POST", payload);
+      const response = await sendRequest(
+        "/payments/create-checkout-session",
+        "POST",
+        payload
+      );
 
-    if (data?.paymentBreakdown) {
-      setPaymentBreakdown(data.paymentBreakdown);
-      setShowAdvanceStep(true);
-    } else {
-      setSnackbar({
-        open: true,
-        message: "Booking confirmed but payment details missing.",
-        type: "warning",
-      });
-      setShowModal(false);
+      console.log("✅ Session Response:", response);
+
+      // ✅ Use `response.url` instead of `response.data.url`
+      window.location.href = response.url;
+    } catch (error) {
+      console.error("❌ Payment failed:", error);
     }
-  } catch (err) {
-    console.error("❌ Booking error:", err);
-    setSnackbar({
-      open: true,
-      message: err.message || "Booking failed.",
-      type: "error",
-    });
-  }
-};
-
-// ✨ Step 2: Trigger Stripe payment
-const handleMakePayment = async () => {
-  try {
-    const currentUser = JSON.parse(localStorage.getItem("user")); // ensure we have the email
-
-    const payload = {
-      amount: paymentBreakdown.advanceAmount, // use actual advance amount
-      vendorName: vendor.name,
-      customerEmail: currentUser?.email,
-    };
-
-    const response = await sendRequest(
-      "/payments/create-checkout-session",
-      "POST",
-      payload
-    );
-
-    console.log("✅ Session Response:", response);
-
-    // ✅ Use `response.url` instead of `response.data.url`
-    window.location.href = response.url;
-  } catch (error) {
-    console.error("❌ Payment failed:", error);
-  }
-};
-
+  };
 
   // ✨ Loading states
   if (loading)
@@ -245,6 +348,27 @@ const handleMakePayment = async () => {
               </p>
             </div>
           </div>
+          {bookedDates.length > 0 && (
+            <div className="mb-4 text-sm text-gray-600 bg-gray-100 p-3 rounded-lg">
+              <p className="font-medium mb-1">📅 Already booked dates:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                {bookedDates.map((date, i) => {
+                  if (typeof date === "string") {
+                    return (
+                      <p key={i}>📅 {new Date(date).toLocaleDateString()}</p>
+                    );
+                  } else {
+                    return (
+                      <p key={i}>
+                        📅 {new Date(date.startDate).toLocaleDateString()} -{" "}
+                        {new Date(date.endDate).toLocaleDateString()}
+                      </p>
+                    );
+                  }
+                })}
+              </ul>
+            </div>
+          )}
 
           {vendor.portfolio?.length > 0 && (
             <div>
@@ -359,6 +483,7 @@ const handleMakePayment = async () => {
                       value={booking.startDate}
                       onChange={handleBookingChange}
                       className="w-full border border-gray-300 rounded-lg p-2"
+                      min={new Date().toISOString().split("T")[0]}
                     />
                   </div>
                   <div>
@@ -369,6 +494,10 @@ const handleMakePayment = async () => {
                       value={booking.endDate}
                       onChange={handleBookingChange}
                       className="w-full border border-gray-300 rounded-lg p-2"
+                      min={
+                        booking.startDate ||
+                        new Date().toISOString().split("T")[0]
+                      }
                     />
                   </div>
                 </div>

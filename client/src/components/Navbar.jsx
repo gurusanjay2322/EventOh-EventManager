@@ -31,16 +31,18 @@ export default function Navbar() {
 
           {/* 🔗 Nav Links */}
           <div className="flex items-center gap-6 text-sm">
-            <NavLink
-              to="/"
-              className={({ isActive }) =>
-                `hover:text-indigo-600 ${
-                  isActive ? "text-indigo-600 font-medium" : "text-gray-700"
-                }`
-              }
-            >
-              Home
-            </NavLink>
+            {!role && (
+              <NavLink
+                to="/"
+                className={({ isActive }) =>
+                  `hover:text-indigo-600 ${
+                    isActive ? "text-indigo-600 font-medium" : "text-gray-700"
+                  }`
+                }
+              >
+                Home
+              </NavLink>
+            )}
 
             <NavLink
               to="/vendors"

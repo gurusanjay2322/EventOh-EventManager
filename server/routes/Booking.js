@@ -9,7 +9,27 @@ import {
 import VerifyToken from "../middleware/verifyToken.js";
 
 const router = express.Router();
+router.post("/create-temp", async (req, res) => {
+  try {
+    const booking = await Booking.create({
+      vendorId: req.body.vendorId,
+      customerId: req.body.customerId,
+      venueUnitId: req.body.venueUnitId,
+      startDate: req.body.startDate,
+      endDate: req.body.endDate,
+      totalAmount: req.body.totalAmount,
+      advanceAmount: req.body.advanceAmount,
+      remainingAmount: req.body.remainingAmount,
+      notes: req.body.notes,
+      status: req.body.status || "pending_advance_payment",
+    });
 
+    res.status(201).json(booking);
+  } catch (error) {
+    console.error("Booking creation failed:", error);
+    res.status(500).json({ message: "Failed to create temporary booking" });
+  }
+});
 // ✅ Mark payment complete
 router.put("/:id/mark-paid", VerifyToken, async (req, res) => {
   console.log("🟢 /mark-paid route hit");

@@ -1,7 +1,13 @@
 import { useNavigate } from "react-router-dom";
-
+import { useEffect } from "react";
 export default function Home() {
   const navigate = useNavigate();
+   useEffect(() => {
+    const role = localStorage.getItem("role");
+    if (role === "admin") navigate("/admin", { replace: true });
+    else if (role === "vendor") navigate("/vendor/dashboard", { replace: true });
+    else if (role === "customer") navigate("/profile", { replace: true });
+  }, [navigate]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-6 py-12 md:py-20 overflow-hidden">
